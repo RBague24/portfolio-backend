@@ -34,7 +34,6 @@ async function connectMongoDB() {
       maxIdleTimeMS: 45000,
       tls: true,
       tlsAllowInvalidCertificates: true,
-      tlsInsecure: true,
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
       socketTimeoutMS: 30000,
