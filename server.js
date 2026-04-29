@@ -56,7 +56,7 @@ async function connectMongoDB() {
 
 // ========== AUTHENTICATION ==========
 // Password stored in environment variable (secret)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'JennaJen24/7!!!';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 app.post('/api/auth/login', (req, res) => {
   const { password } = req.body;
