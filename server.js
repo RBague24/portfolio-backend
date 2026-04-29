@@ -54,7 +54,28 @@ async function connectMongoDB() {
   }
 }
 
-// Health Check
+// ========== AUTHENTICATION ==========
+// Password stored in environment variable (secret)
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'JennaJen24/7!!!';
+
+app.post('/api/auth/login', (req, res) => {
+  const { password } = req.body;
+  
+  if (!password) {
+    return res.status(400).json({ error: 'Password required' });
+  }
+  
+  if (password === ADMIN_PASSWORD) {
+    // Password is correct - return success
+    // Frontend will handle the token/session
+    res.json({ success: true, message: 'Login successful' });
+  } else {
+    // Wrong password
+    res.status(401).json({ success: false, error: 'Invalid password' });
+  }
+});
+
+// Health Check (no DB needed)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'Server is running ✅',
@@ -63,7 +84,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Middleware to check DB connection
+// Middleware to check DB connection (for all other endpoints)
 app.use((req, res, next) => {
   if (!db || !isConnected) {
     return res.status(503).json({ error: 'Database not ready. Please try again in a moment.' });
