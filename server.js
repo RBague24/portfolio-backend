@@ -32,8 +32,6 @@ async function connectMongoDB() {
       maxPoolSize: 5,
       minPoolSize: 1,
       maxIdleTimeMS: 45000,
-      tls: true,
-      tlsAllowInvalidCertificates: true,
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
       socketTimeoutMS: 30000,
