@@ -174,6 +174,29 @@ app.delete('/api/portfolio/:id', async (req, res) => {
   }
 });
 
+app.put('/api/portfolio/:id', async (req, res) => {
+  try {
+    const { company, url, desc, img } = req.body;
+    if (!company || !url || !desc) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const result = await db.collection('portfolio').updateOne(
+      { id: parseInt(req.params.id) },
+      { $set: { company, url, desc, img: img || '', updatedAt: new Date() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Portfolio item not found' });
+    }
+    
+    res.json({ success: true, ...req.body });
+  } catch (err) {
+    console.error('PUT /api/portfolio:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ========== SERVICES ==========
 app.get('/api/services', async (req, res) => {
   try {
