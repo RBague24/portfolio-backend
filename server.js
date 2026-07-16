@@ -55,8 +55,7 @@ async function connectMongoDB() {
 }
 
 // ========== AUTHENTICATION ==========
-// Password stored in environment variable (secret)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'JennaJen24/7!!!';
 
 app.post('/api/auth/login', (req, res) => {
   const { password } = req.body;
@@ -66,16 +65,13 @@ app.post('/api/auth/login', (req, res) => {
   }
   
   if (password === ADMIN_PASSWORD) {
-    // Password is correct - return success
-    // Frontend will handle the token/session
     res.json({ success: true, message: 'Login successful' });
   } else {
-    // Wrong password
     res.status(401).json({ success: false, error: 'Invalid password' });
   }
 });
 
-// Health Check (no DB needed)
+// Health Check
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'Server is running ✅',
@@ -84,7 +80,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Middleware to check DB connection (for all other endpoints)
+// Middleware to check DB connection
 app.use((req, res, next) => {
   if (!db || !isConnected) {
     return res.status(503).json({ error: 'Database not ready. Please try again in a moment.' });
@@ -107,7 +103,7 @@ app.post('/api/projects', async (req, res) => {
   try {
     const { cat, name, desc } = req.body;
     if (!cat || !name || !desc) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: cat, name, desc' });
     }
     
     const result = await db.collection('projects').insertOne({
@@ -116,9 +112,32 @@ app.post('/api/projects', async (req, res) => {
       createdAt: new Date()
     });
     
-    res.json({ id: result.insertedId, ...req.body });
+    res.json({ id: result.insertedId, cat, name, desc });
   } catch (err) {
     console.error('POST /api/projects:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    const { name, desc } = req.body;
+    if (!name || !desc) {
+      return res.status(400).json({ error: 'Missing required fields: name, desc' });
+    }
+    
+    const result = await db.collection('projects').updateOne(
+      { id: parseInt(req.params.id) },
+      { $set: { name, desc, updatedAt: new Date() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    res.json({ success: true, name, desc });
+  } catch (err) {
+    console.error('PUT /api/projects/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -128,12 +147,12 @@ app.delete('/api/projects/:id', async (req, res) => {
     await db.collection('projects').deleteOne({ id: parseInt(req.params.id) });
     res.json({ success: true });
   } catch (err) {
-    console.error('DELETE /api/projects:', err.message);
+    console.error('DELETE /api/projects/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ========== PORTFOLIO ==========
+// ========== PORTFOLIO (Sample Work) ==========
 app.get('/api/portfolio', async (req, res) => {
   try {
     const portfolio = await db.collection('portfolio').find({}).toArray();
@@ -148,7 +167,7 @@ app.post('/api/portfolio', async (req, res) => {
   try {
     const { company, url, desc, img } = req.body;
     if (!company || !url || !desc) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: company, url, desc' });
     }
     
     const result = await db.collection('portfolio').insertOne({
@@ -157,19 +176,9 @@ app.post('/api/portfolio', async (req, res) => {
       createdAt: new Date()
     });
     
-    res.json({ id: result.insertedId, ...req.body });
+    res.json({ id: result.insertedId, company, url, desc, img: img || '' });
   } catch (err) {
     console.error('POST /api/portfolio:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/portfolio/:id', async (req, res) => {
-  try {
-    await db.collection('portfolio').deleteOne({ id: parseInt(req.params.id) });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('DELETE /api/portfolio:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -178,7 +187,7 @@ app.put('/api/portfolio/:id', async (req, res) => {
   try {
     const { company, url, desc, img } = req.body;
     if (!company || !url || !desc) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: company, url, desc' });
     }
     
     const result = await db.collection('portfolio').updateOne(
@@ -190,9 +199,19 @@ app.put('/api/portfolio/:id', async (req, res) => {
       return res.status(404).json({ error: 'Portfolio item not found' });
     }
     
-    res.json({ success: true, ...req.body });
+    res.json({ success: true, company, url, desc, img: img || '' });
   } catch (err) {
-    console.error('PUT /api/portfolio:', err.message);
+    console.error('PUT /api/portfolio/:id:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/portfolio/:id', async (req, res) => {
+  try {
+    await db.collection('portfolio').deleteOne({ id: parseInt(req.params.id) });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/portfolio/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -210,9 +229,9 @@ app.get('/api/services', async (req, res) => {
 
 app.post('/api/services', async (req, res) => {
   try {
-    const { name, price, desc, features } = req.body;
-    if (!name || !price || !desc || !features) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const { title, price, features } = req.body;
+    if (!title || !price || !features) {
+      return res.status(400).json({ error: 'Missing required fields: title, price, features' });
     }
     
     const featuresList = Array.isArray(features) ? features : 
@@ -220,13 +239,39 @@ app.post('/api/services', async (req, res) => {
     
     const result = await db.collection('services').insertOne({
       id: Date.now(),
-      name, price: parseInt(price), desc, features: featuresList,
+      title, price: parseInt(price), features: featuresList,
       createdAt: new Date()
     });
     
-    res.json({ id: result.insertedId, ...req.body, features: featuresList });
+    res.json({ id: result.insertedId, title, price, features: featuresList });
   } catch (err) {
     console.error('POST /api/services:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/services/:id', async (req, res) => {
+  try {
+    const { title, price, features } = req.body;
+    if (!title || !price || !features) {
+      return res.status(400).json({ error: 'Missing required fields: title, price, features' });
+    }
+    
+    const featuresList = Array.isArray(features) ? features : 
+      (typeof features === 'string' ? features.split(',').map(f => f.trim()) : []);
+    
+    const result = await db.collection('services').updateOne(
+      { id: parseInt(req.params.id) },
+      { $set: { title, price: parseInt(price), features: featuresList, updatedAt: new Date() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+    
+    res.json({ success: true, title, price, features: featuresList });
+  } catch (err) {
+    console.error('PUT /api/services/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -236,7 +281,7 @@ app.delete('/api/services/:id', async (req, res) => {
     await db.collection('services').deleteOne({ id: parseInt(req.params.id) });
     res.json({ success: true });
   } catch (err) {
-    console.error('DELETE /api/services:', err.message);
+    console.error('DELETE /api/services/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -254,20 +299,43 @@ app.get('/api/courses', async (req, res) => {
 
 app.post('/api/courses', async (req, res) => {
   try {
-    const { name, platform, status, progress } = req.body;
-    if (!name || !platform || !status) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const { name, status, progress } = req.body;
+    if (!name || !status) {
+      return res.status(400).json({ error: 'Missing required fields: name, status' });
     }
     
     const result = await db.collection('courses').insertOne({
       id: Date.now(),
-      name, platform, status, progress: parseInt(progress) || 0,
+      name, status, progress: parseInt(progress) || 0,
       createdAt: new Date()
     });
     
-    res.json({ id: result.insertedId, ...req.body });
+    res.json({ id: result.insertedId, name, status, progress: parseInt(progress) || 0 });
   } catch (err) {
     console.error('POST /api/courses:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/courses/:id', async (req, res) => {
+  try {
+    const { name, status, progress } = req.body;
+    if (!name || !status) {
+      return res.status(400).json({ error: 'Missing required fields: name, status' });
+    }
+    
+    const result = await db.collection('courses').updateOne(
+      { id: parseInt(req.params.id) },
+      { $set: { name, status, progress: parseInt(progress) || 0, updatedAt: new Date() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    res.json({ success: true, name, status, progress: parseInt(progress) || 0 });
+  } catch (err) {
+    console.error('PUT /api/courses/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -277,7 +345,7 @@ app.delete('/api/courses/:id', async (req, res) => {
     await db.collection('courses').deleteOne({ id: parseInt(req.params.id) });
     res.json({ success: true });
   } catch (err) {
-    console.error('DELETE /api/courses:', err.message);
+    console.error('DELETE /api/courses/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -297,7 +365,7 @@ app.post('/api/diplomas', async (req, res) => {
   try {
     const { name, institution, year, img } = req.body;
     if (!name || !institution || !year) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing required fields: name, institution, year' });
     }
     
     const result = await db.collection('diplomas').insertOne({
@@ -306,9 +374,32 @@ app.post('/api/diplomas', async (req, res) => {
       createdAt: new Date()
     });
     
-    res.json({ id: result.insertedId, ...req.body });
+    res.json({ id: result.insertedId, name, institution, year: parseInt(year), img: img || '' });
   } catch (err) {
     console.error('POST /api/diplomas:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/diplomas/:id', async (req, res) => {
+  try {
+    const { name, institution, year, img } = req.body;
+    if (!name || !institution || !year) {
+      return res.status(400).json({ error: 'Missing required fields: name, institution, year' });
+    }
+    
+    const result = await db.collection('diplomas').updateOne(
+      { id: parseInt(req.params.id) },
+      { $set: { name, institution, year: parseInt(year), img: img || '', updatedAt: new Date() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Diploma not found' });
+    }
+    
+    res.json({ success: true, name, institution, year: parseInt(year), img: img || '' });
+  } catch (err) {
+    console.error('PUT /api/diplomas/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -318,7 +409,7 @@ app.delete('/api/diplomas/:id', async (req, res) => {
     await db.collection('diplomas').deleteOne({ id: parseInt(req.params.id) });
     res.json({ success: true });
   } catch (err) {
-    console.error('DELETE /api/diplomas:', err.message);
+    console.error('DELETE /api/diplomas/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -362,7 +453,6 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log('📡 Connecting to MongoDB...');
   
-  // Connect to MongoDB with aggressive retry
   let attempts = 0;
   const maxAttempts = 10;
   
