@@ -229,21 +229,21 @@ app.get('/api/services', async (req, res) => {
 
 app.post('/api/services', async (req, res) => {
   try {
-    const { title, price, features } = req.body;
-    if (!title || !price || !features) {
-      return res.status(400).json({ error: 'Missing required fields: title, price, features' });
+    const { name, price, desc, features } = req.body;
+    if (!name || !price || !desc || !features) {
+      return res.status(400).json({ error: 'Missing required fields: name, price, desc, features' });
     }
-    
-    const featuresList = Array.isArray(features) ? features : 
+
+    const featuresList = Array.isArray(features) ? features :
       (typeof features === 'string' ? features.split(',').map(f => f.trim()) : []);
-    
+
     const result = await db.collection('services').insertOne({
       id: Date.now(),
-      title, price: parseInt(price), features: featuresList,
+      name, price: parseInt(price), desc, features: featuresList,
       createdAt: new Date()
     });
-    
-    res.json({ id: result.insertedId, title, price, features: featuresList });
+
+    res.json({ id: result.insertedId, name, price, desc, features: featuresList });
   } catch (err) {
     console.error('POST /api/services:', err.message);
     res.status(500).json({ error: err.message });
@@ -252,24 +252,24 @@ app.post('/api/services', async (req, res) => {
 
 app.put('/api/services/:id', async (req, res) => {
   try {
-    const { title, price, features } = req.body;
-    if (!title || !price || !features) {
-      return res.status(400).json({ error: 'Missing required fields: title, price, features' });
+    const { name, price, desc, features } = req.body;
+    if (!name || !price || !desc || !features) {
+      return res.status(400).json({ error: 'Missing required fields: name, price, desc, features' });
     }
-    
-    const featuresList = Array.isArray(features) ? features : 
+
+    const featuresList = Array.isArray(features) ? features :
       (typeof features === 'string' ? features.split(',').map(f => f.trim()) : []);
-    
+
     const result = await db.collection('services').updateOne(
       { id: parseInt(req.params.id) },
-      { $set: { title, price: parseInt(price), features: featuresList, updatedAt: new Date() } }
+      { $set: { name, price: parseInt(price), desc, features: featuresList, updatedAt: new Date() } }
     );
-    
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: 'Service not found' });
     }
-    
-    res.json({ success: true, title, price, features: featuresList });
+
+    res.json({ success: true, name, price, desc, features: featuresList });
   } catch (err) {
     console.error('PUT /api/services/:id:', err.message);
     res.status(500).json({ error: err.message });
